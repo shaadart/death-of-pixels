@@ -3,10 +3,71 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Image to ASCII</title>
+  <title>ASCII ART CONVERTER</title>
+  <link rel="stylesheet" href="style.css">
   <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.6.0/p5.js"></script>
-  <script src="image_to_ascii.js"></script>
+  <script src="image_to_ascii.js" defer></script>
 </head>
 <body>
+  <div class="container">
+    <h1>ASCII CONVERTER</h1>
+    
+    <!-- Canvas Area - Positioned First -->
+    <div id="asciiContainer">
+      <canvas id="previewCanvas"></canvas>
+      <pre id="asciiOutput"></pre>
+    </div>
+    
+    <!-- Toolbar positioned directly below canvas -->
+    <div class="toolbar">
+      <div class="control">
+        <label for="bgcolor">BG</label>
+        <input type="color" id="bgcolor" value="#000000">
+      </div>
+      <div class="control">
+        <label for="asciiColor">FG</label>
+        <input type="color" id="asciiColor" value="#00ccff">
+      </div>
+      <div class="control">
+        <label for="pixelSize">DEPTH</label>
+        <input type="range" id="pixelSize" min="4" max="32" value="8">
+      </div>
+      <div class="control">
+        <input type="file" id="fileInput" accept="image/*" title="Upload Image">
+      </div>
+      <div class="control">
+        <button id="resetBtn">RESET</button>
+      </div>
+      <div class="control">
+        <button id="downloadBtn">SAVE</button>
+      </div>
+    </div>
+    
+    <!-- Controls Area - Below Toolbar -->
+    <div id="toolset">
+      <div class="control">
+        <label for="canvasWidth">CANVAS SIZE</label>
+        <input type="range" id="canvasWidth" min="100" max="1600" value="800">
+        <input type="number" id="canvasWidthInput" min="100" max="1600" value="800">
+      </div>
+      <div class="control">
+        <label for="brightness">BRIGHTNESS</label>
+        <input type="range" id="brightness" min="-1" max="1" step="0.01" value="0">
+      </div>
+      <div class="control">
+        <label for="contrast">CONTRAST</label>
+        <input type="range" id="contrast" min="0" max="2" step="0.01" value="1">
+      </div>
+      <div class="control">
+        <label for="saturation">SATURATION</label>
+        <input type="range" id="saturation" min="0" max="2" step="0.01" value="1">
+      </div>
+      <div class="control">
+        <label for="useCustomChars">CUSTOM CHARS</label>
+        <input type="checkbox" id="useCustomChars">
+        <input type="text" id="customChars" placeholder="@%#*+=-:. " disabled>
+      </div>
+    </div>
+  </div>
 </body>
 </html>

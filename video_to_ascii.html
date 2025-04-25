@@ -2,11 +2,132 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
+  <meta http-equiv="X-UA-Compatible" content="IE=edge">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Video to ASCII</title>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.6.0/p5.js"></script>
-  <script src="video_to_ascii.js"></script>
+  <title>ASCII Video Generator (p5.js)</title>
+  <script src="https://cdn.jsdelivr.net/npm/p5@1.5.0/lib/p5.min.js"></script>
+  <style>
+    body { display: flex; }
+    #controls { flex: 0 0 200px; padding: 10px; font-family: sans-serif; }
+    canvas { border: 1px solid #ccc; }
+    .ctrl-group { margin-bottom: 10px; }
+    .ctrl-group label { display: block; font-size: 0.9em; margin-bottom: 4px; }
+  </style>
 </head>
 <body>
+  <div id="controls">
+    <div class="ctrl-group">
+      <label for="videoFile">Load Video</label>
+      <input type="file" id="videoFile" accept="video/*">
+    </div>
+    <div class="ctrl-group">
+      <label for="charsetInput">Charset</label>
+      <input type="text" id="charsetInput" value="oo|         .    ">
+    </div>
+    <div class="ctrl-group">
+      <label for="depthSlider">Depth</label>
+      <input type="range" id="depthSlider" min="1" max="10" value="10">
+    </div>
+    <div class="ctrl-group">
+      <label for="scaleSlider">Scale (%)</label>
+      <input type="range" id="scaleSlider" min="10" max="200" value="100">
+    </div>
+    <div class="ctrl-group">
+      <label for="contrastSlider">Contrast (%)</label>
+      <input type="range" id="contrastSlider" min="0" max="300" value="100">
+    </div>
+    <div class="ctrl-group">
+      <label for="brightnessSlider">Brightness</label>
+      <input type="range" id="brightnessSlider" min="-100" max="100" value="0">
+    </div>
+    <div class="ctrl-group">
+      <label for="textColorPicker">Text Color</label>
+      <input type="color" id="textColorPicker" value="#ffffff">
+    </div>
+    <div class="ctrl-group">
+      <label for="bgColorPicker">Background Color</label>
+      <input type="color" id="bgColorPicker" value="#000000">
+    </div>
+  </div>
+
+  <script>
+    let video;
+    let playing = false;
+    let canvasW = 800;
+    let canvasH = 600;
+
+    function setup() {
+      let cnv = createCanvas(canvasW, canvasH);
+      cnv.parent(document.body);
+      pixelDensity(1);
+
+      // File input
+      const fileInput = select('#videoFile').elt;
+      fileInput.onchange = (e) => {
+        if (video) video.remove();
+        const file = e.target.files[0];
+        if (file) {
+          const url = URL.createObjectURL(file);
+          video = createVideo(url, () => {
+            video.loop();
+            video.volume(0);
+            video.hide();
+            playing = true;
+          });
+        }
+      };
+    }
+
+    function draw() {
+      const bg = select('#bgColorPicker').elt.value;
+      background(bg);
+
+      if (!playing || !video || !video.loadedmetadata) return;
+
+      video.loadPixels();
+      if (video.pixels.length === 0) return;
+
+      const charset = select('#charsetInput').elt.value;
+      const depth = int(select('#depthSlider').elt.value);
+      const scalePct = select('#scaleSlider').elt.value / 100.0;
+      const contrast = select('#contrastSlider').elt.value / 100.0;
+      const brightness = select('#brightnessSlider').elt.value * 255/100;
+      const textCol = select('#textColorPicker').elt.value;
+
+      // Set font size based on scale factor
+      const baseFontSize = 12;  // Base font size in pixels
+      const fontSize = baseFontSize * scalePct;
+      
+      textFont('monospace', fontSize);
+      fill(textCol);
+      
+      const charW = textWidth('A');
+      const charH = textAscent() * 1.2;
+      const cols = floor(width / charW);
+      const rows = floor(height / charH);
+
+      const wStep = floor(video.width / cols);
+      const hStep = floor(video.height / rows);
+
+      for (let j = 0; j < rows; j++) {
+        for (let i = 0; i < cols; i++) {
+          const x = i * wStep;
+          const y = j * hStep;
+          const idx = 4 * (y * video.width + x);
+          let r = video.pixels[idx];
+          let g = video.pixels[idx+1];
+          let b = video.pixels[idx+2];
+          let gray = (r + g + b) / 3;
+          // contrast & brightness
+          gray = constrain((gray-128)*contrast + 128 + brightness, 0, 255);
+          // map to ascii
+          const levs = charset.substring(0, depth);
+          const pos = floor(map(gray, 0, 255, levs.length-1, 0));
+          const c = levs.charAt(pos);
+          text(c, i * charW, j * charH);
+        }
+      }
+    }
+  </script>
 </body>
 </html>

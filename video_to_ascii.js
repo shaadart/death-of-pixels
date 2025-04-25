@@ -11,10 +11,11 @@ https://www.pattvira.com/
 let asciiChar = "$@B%8&WM#*oahkbdpqwmZO0QLCJUYXzcvunxrjft/\|()1{}[]?-_+~<>i!lI;:,^`'. "
 // let asciiChar = " .:-=+*#%@";
 
-let videoInput;
+let videoInput; vidw = 10; vidh = 10; scl = 10;
+let w, h;
 
 function setup() {
-  createCanvas(400, 400);
+  createCanvas(vidw * scl, vidh * scl);
   videoInput = createCapture(VIDEO);
   videoInput.size(64, 48);
   videoInput.hide();
@@ -35,7 +36,7 @@ function setup() {
 }
 
 function draw() {
-  background(255);
+  background(150);
   videoInput.loadPixels();
 
   for (let i = 0; i < videoInput.width; i++) {
