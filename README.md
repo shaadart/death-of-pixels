@@ -1,5 +1,6 @@
 # DEATH OF PIXELS
-<video controls src="Screen-Recording.mp4" title=""></video>
+https://github.com/user-attachments/assets/a3b7bb59-fef7-4411-a6b0-73f8d4113316
+
 
 
 ## Features
