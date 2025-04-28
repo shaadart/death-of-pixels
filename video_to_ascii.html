@@ -43,11 +43,11 @@
     </div>
     <div class="ctrl-group">
       <label for="textColorPicker">Text Color</label>
-      <input type="color" id="textColorPicker" value="#ffffff">
+      <input type="color" id="textColorPicker" value="#ffbfff">
     </div>
     <div class="ctrl-group">
       <label for="bgColorPicker">Background Color</label>
-      <input type="color" id="bgColorPicker" value="#000000">
+      <input type="color" id="bgColorPicker" value="#003eb7">
     </div>
     <div class="ctrl-group">
       <button id="exportButton">Start Recording</button>
@@ -157,7 +157,8 @@ fileInput.onchange = (e) => {
 
             if (pixelMode) {
             // Game Boy-like pixel art style
-            let shades = ['#0f380f', '#306230', '#8bac0f']; // Game Boy green palette
+
+            let shades = [ document.getElementById('textColorPicker').value, document.getElementById('bgColorPicker').value,]; // Custom palette
             let shadeIndex = floor(map(gray, 0, 255, 0, shades.length - 1));
             fill(shades[shadeIndex]);
             rect(i * charW, j * charH, charH, charH);
@@ -183,8 +184,8 @@ fileInput.onchange = (e) => {
       document.getElementById('scaleSlider').value = 100;
       document.getElementById('contrastSlider').value = 100;
       document.getElementById('brightnessSlider').value = 0;
-      document.getElementById('textColorPicker').value = '#ffffff';
-      document.getElementById('bgColorPicker').value = '#000000';
+      document.getElementById('textColorPicker').value = '##95b6f4';
+      document.getElementById('bgColorPicker').value = '#003eb7';
       background('#000000');
     });
 
