@@ -1,7 +1,7 @@
 let img, aspectRatio;
 let previewCanvas, previewCtx;
 let size = 10; 
-let asciiChar = "$@B%8&WM#*oahkbdpqwmZO0QLCJUYXzcvunxrjft/\|()1{}[]?-_+~<>i!lI;:,^`'. "
+let asciiChar = "$@B%8&WM#*oahkbdpqwmZO0QLCJUYXzcvunxrjft/()1{}[]?-_+~<>i!lI;:,^`'. "
 // let asciiChar = " .:-=+*#%@";
 let inputFile;
 

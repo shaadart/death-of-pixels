@@ -4,8 +4,9 @@
   <meta charset="UTF-8">
   <meta http-equiv="X-UA-Compatible" content="IE=edge">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>ASCII Video Generator (p5.js)</title>
+  <title>ASCII/Pixel Art Video Generator (p5.js)</title>
   <script src="https://cdn.jsdelivr.net/npm/p5@1.5.0/lib/p5.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/ccapture.js@1.1.0/build/CCapture.all.min.js"></script>
   <style>
     body { display: flex; }
     #controls { flex: 0 0 200px; padding: 10px; font-family: sans-serif; }
@@ -48,35 +49,69 @@
       <label for="bgColorPicker">Background Color</label>
       <input type="color" id="bgColorPicker" value="#000000">
     </div>
+    <div class="ctrl-group">
+      <button id="exportButton">Start Recording</button>
+      <button id="resetButton">Reset Settings</button>
+    </div>
+    <div class="ctrl-group">
+      <button id="saveSettingsButton">Save Settings</button>
+      <button id="loadSettingsButton">Load Settings</button>
+    </div>
+    <div class="ctrl-group">
+      <button id="togglePixelMode">Toggle Pixel Mode</button>
+    </div>
   </div>
 
-  <script>
+  <script> 
     let video;
     let playing = false;
     let canvasW = 800;
     let canvasH = 600;
+    let capturer;
+    let isRecording = false;
+    let pixelMode = false; // <-- Pixel mode toggle
 
     function setup() {
       let cnv = createCanvas(canvasW, canvasH);
       cnv.parent(document.body);
       pixelDensity(1);
 
-      // File input
-      const fileInput = select('#videoFile').elt;
-      fileInput.onchange = (e) => {
-        if (video) video.remove();
-        const file = e.target.files[0];
-        if (file) {
-          const url = URL.createObjectURL(file);
-          video = createVideo(url, () => {
-            video.loop();
-            video.volume(0);
-            video.hide();
-            playing = true;
-          });
-        }
-      };
-    }
+const fileInput = select('#videoFile').elt;
+fileInput.onchange = (e) => {
+  if (video) video.remove();
+  const file = e.target.files[0];
+  if (file) {
+    const url = URL.createObjectURL(file);
+    video = createVideo(url, () => {
+      video.loop();
+      video.hide();
+      playing = true;
+
+      // Set canvas width fixed to 800, calculate height by aspect ratio
+      const aspectRatio = video.height / video.width;
+      resizeCanvas(canvasW, 800 * aspectRatio);
+    });
+  }
+    }};
+
+
+    document.getElementById('exportButton').addEventListener('click', () => {
+      if (!isRecording) {
+        capturer = new CCapture({ format: 'webm' });
+        capturer.start();
+        isRecording = true;
+        exportButton.textContent = 'Stop Recording';
+      } else {
+        capturer.stop();
+        capturer.save();
+        isRecording = false;
+        exportButton.textContent = 'Start Recording';
+      }
+    });
+
+    document.getElementById('togglePixelMode').addEventListener('click', () => {
+      pixelMode = !pixelMode;
+    });
 
     function draw() {
       const bg = select('#bgColorPicker').elt.value;
@@ -91,16 +126,16 @@
       const depth = int(select('#depthSlider').elt.value);
       const scalePct = select('#scaleSlider').elt.value / 100.0;
       const contrast = select('#contrastSlider').elt.value / 100.0;
-      const brightness = select('#brightnessSlider').elt.value * 255/100;
+      const brightness = select('#brightnessSlider').elt.value * 255 / 100;
       const textCol = select('#textColorPicker').elt.value;
 
-      // Set font size based on scale factor
-      const baseFontSize = 12;  // Base font size in pixels
+      const baseFontSize = 12;
       const fontSize = baseFontSize * scalePct;
-      
+
       textFont('monospace', fontSize);
       fill(textCol);
-      
+      noStroke();
+
       const charW = textWidth('A');
       const charH = textAscent() * 1.2;
       const cols = floor(width / charW);
@@ -115,19 +150,144 @@
           const y = j * hStep;
           const idx = 4 * (y * video.width + x);
           let r = video.pixels[idx];
-          let g = video.pixels[idx+1];
-          let b = video.pixels[idx+2];
-          let gray = (r + g + b) / 3;
-          // contrast & brightness
-          gray = constrain((gray-128)*contrast + 128 + brightness, 0, 255);
-          // map to ascii
-          const levs = charset.substring(0, depth);
-          const pos = floor(map(gray, 0, 255, levs.length-1, 0));
-          const c = levs.charAt(pos);
-          text(c, i * charW, j * charH);
+          let g = video.pixels[idx + 1];
+          let b = video.pixels[idx + 2];
+            let gray = (r + g + b) / 3;
+            gray = constrain((gray - 128) * contrast + 128 + brightness, 0, 255);
+
+            if (pixelMode) {
+            // Game Boy-like pixel art style
+            let shades = ['#0f380f', '#306230', '#8bac0f']; // Game Boy green palette
+            let shadeIndex = floor(map(gray, 0, 255, 0, shades.length - 1));
+            fill(shades[shadeIndex]);
+            rect(i * charW, j * charH, charH, charH);
+            } else {
+            // ASCII characters
+            const levs = charset.substring(0, depth);
+            const pos = floor(map(gray, 0, 255, levs.length - 1, 0));
+            const c = levs.charAt(pos);
+            text(c, i * charW, j * charH);
+          }
         }
       }
+
+      if (isRecording) {
+        capturer.capture(document.querySelector('canvas'));
+      }
     }
+
+    // Reset button
+    document.getElementById('resetButton').addEventListener('click', () => {
+      document.getElementById('charsetInput').value = 'oo|         .    ';
+      document.getElementById('depthSlider').value = 10;
+      document.getElementById('scaleSlider').value = 100;
+      document.getElementById('contrastSlider').value = 100;
+      document.getElementById('brightnessSlider').value = 0;
+      document.getElementById('textColorPicker').value = '#ffffff';
+      document.getElementById('bgColorPicker').value = '#000000';
+      background('#000000');
+    });
+
+    // Save settings
+    document.getElementById('saveSettingsButton').addEventListener('click', () => {
+      const settings = {
+        charset: document.getElementById('charsetInput').value,
+        depth: document.getElementById('depthSlider').value,
+        scale: document.getElementById('scaleSlider').value,
+        contrast: document.getElementById('contrastSlider').value,
+        brightness: document.getElementById('brightnessSlider').value,
+        textColor: document.getElementById('textColorPicker').value,
+        bgColor: document.getElementById('bgColorPicker').value
+      };
+
+      const blob = new Blob([JSON.stringify(settings, null, 2)], { type: 'application/json' });
+      const a = document.createElement('a');
+      a.href = URL.createObjectURL(blob);
+      a.download = 'settings.json';
+      a.click();
+    });
+
+    // Load settings
+    document.getElementById('loadSettingsButton').addEventListener('click', () => {
+      const input = document.createElement('input');
+      input.type = 'file';
+      input.accept = 'application/json';
+      input.onchange = (event) => {
+        const file = event.target.files[0];
+        if (file) {
+          const reader = new FileReader();
+          reader.onload = (e) => {
+            const settings = JSON.parse(e.target.result);
+            document.getElementById('charsetInput').value = settings.charset || '';
+            document.getElementById('depthSlider').value = settings.depth || 10;
+            document.getElementById('scaleSlider').value = settings.scale || 100;
+            document.getElementById('contrastSlider').value = settings.contrast || 100;
+            document.getElementById('brightnessSlider').value = settings.brightness || 0;
+            document.getElementById('textColorPicker').value = settings.textColor || '#ffffff';
+            document.getElementById('bgColorPicker').value = settings.bgColor || '#000000';
+          };
+          reader.readAsText(file);
+        }
+      };
+      input.click();
+    });
+
+//     function generatePaletteFromBackground() {
+//   const bgColor = document.getElementById('bgColorPicker').value;
+//   return generatePalette(bgColor);
+// }
+
+// // FULL PALETTE FUNCTION
+// function generatePalette(baseColor) {
+//   if (!baseColor.startsWith('#')) baseColor = '#' + baseColor;
+//   const r = parseInt(baseColor.substr(1,2), 16);
+//   const g = parseInt(baseColor.substr(3,2), 16);
+//   const b = parseInt(baseColor.substr(5,2), 16);
+//   const baseHSL = rgbToHsl(r, g, b);
+//   const palette = [];
+//   palette.push(hslToHex(baseHSL.h, baseHSL.s * 0.9, Math.min(baseHSL.l * 1.3, 1)));
+//   palette.push(hslToHex(baseHSL.h, baseHSL.s * 1.1, Math.max(baseHSL.l * 0.7, 0)));
+//   palette.push(hslToHex((baseHSL.h + 20) % 360, baseHSL.s, baseHSL.l));
+//   return palette;
+// }
+
+// function rgbToHsl(r, g, b) {
+//   r /= 255; g /= 255; b /= 255;
+//   const max = Math.max(r, g, b), min = Math.min(r, g, b);
+//   let h, s, l = (max + min) / 2;
+//   if (max == min) { h = s = 0; }
+//   else {
+//     const d = max - min;
+//     s = l > 0.5 ? d / (2 - max - min) : d / (max + min);
+//     switch (max) {
+//       case r: h = (g - b) / d + (g < b ? 6 : 0); break;
+//       case g: h = (b - r) / d + 2; break;
+//       case b: h = (r - g) / d + 4; break;
+//     }
+//     h *= 60;
+//   }
+//   return { h, s, l };
+// }
+
+// function hslToHex(h, s, l) {
+//   const c = (1 - Math.abs(2 * l - 1)) * s;
+//   const x = c * (1 - Math.abs((h / 60) % 2 - 1));
+//   const m = l - c/2;
+//   let r=0, g=0, b=0;
+//   if (0 <= h && h < 60) { r=c; g=x; b=0; }
+//   else if (60 <= h && h < 120) { r=x; g=c; b=0; }
+//   else if (120 <= h && h < 180) { r=0; g=c; b=x; }
+//   else if (180 <= h && h < 240) { r=0; g=x; b=c; }
+//   else if (240 <= h && h < 300) { r=x; g=0; b=c; }
+//   else if (300 <= h && h < 360) { r=c; g=0; b=x; }
+//   r = Math.round((r + m) * 255);
+//   g = Math.round((g + m) * 255);
+//   b = Math.round((b + m) * 255);
+//   return '#' + [r,g,b].map(x => x.toString(16).padStart(2, '0')).join('');
+// }
+// const palette = generatePaletteFromBackground();
+// console.log(palette);
+
   </script>
 </body>
 </html>
