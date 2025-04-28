@@ -4,8 +4,9 @@
   <meta charset="UTF-8">
   <meta http-equiv="X-UA-Compatible" content="IE=edge">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>ASCII Video Generator (p5.js)</title>
+  <title>ASCII/Pixel Art Video Generator (p5.js)</title>
   <script src="https://cdn.jsdelivr.net/npm/p5@1.5.0/lib/p5.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/ccapture.js@1.1.0/build/CCapture.all.min.js"></script>
   <style>
     body { display: flex; }
     #controls { flex: 0 0 200px; padding: 10px; font-family: sans-serif; }
@@ -48,35 +49,96 @@
       <label for="bgColorPicker">Background Color</label>
       <input type="color" id="bgColorPicker" value="#000000">
     </div>
+    <div class="ctrl-group">
+      <button id="exportButton">Start Recording</button>
+      <button id="resetButton">Reset Settings</button>
+    </div>
+    <div class="ctrl-group">
+      <button id="saveSettingsButton">Save Settings</button>
+      <button id="loadSettingsButton">Load Settings</button>
+    </div>
+    <div class="ctrl-group">
+      <button id="togglePixelMode">Toggle Pixel Mode</button>
+    </div>
   </div>
 
-  <script>
+  <script> 
     let video;
     let playing = false;
     let canvasW = 800;
     let canvasH = 600;
+    let capturer;
+    let isRecording = false;
+    let pixelMode = false; // <-- Pixel mode toggle
 
     function setup() {
       let cnv = createCanvas(canvasW, canvasH);
       cnv.parent(document.body);
       pixelDensity(1);
 
-      // File input
-      const fileInput = select('#videoFile').elt;
-      fileInput.onchange = (e) => {
-        if (video) video.remove();
-        const file = e.target.files[0];
-        if (file) {
-          const url = URL.createObjectURL(file);
-          video = createVideo(url, () => {
-            video.loop();
-            video.volume(0);
-            video.hide();
-            playing = true;
-          });
+const fileInput = select('#videoFile').elt;
+fileInput.onchange = (e) => {
+  if (video) video.remove();
+  const file = e.target.files[0];
+  if (file) {
+    const url = URL.createObjectURL(file);
+    video = createVideo(url, () => {
+      video.loop();
+      video.hide();
+      playing = true;
+
+      // Set canvas width fixed to 800, calculate height by aspect ratio
+      const aspectRatio = video.height / video.width;
+      resizeCanvas(canvasW, 800 * aspectRatio);
+    });
+  }
+    }};
+
+
+    document.getElementById('exportButton').addEventListener('click', () => {
+      if (!isRecording) {
+        capturer = new CCapture({ format: 'webm' });
+        capturer.start();
+        isRecording = true;
+        exportButton.textContent = 'Stop Recording';
+      } else {
+        capturer.stop();
+        capturer.save();
+        isRecording = false;
+        exportButton.textContent = 'Start Recording';
+      }
+    });
+
+    document.getElementById('togglePixelMode').addEventListener('click', () => {
+      pixelMode = !pixelMode;
+    });
+
+      // Adjust the charset and depth for a pixelated effect
+      const charset = '@#%*+=-:. '; // Simplified charset for bold effect
+      const depth = 8; // Fixed depth for consistent density
+
+      // Map colors to a limited palette
+      function mapToPalette(r, g, b) {
+        const palette = [
+          [0, 0, 0], // Black
+          [255, 255, 0], // Yellow
+          [0, 128, 0], // Green
+        ];
+        let closestColor = palette[0];
+        let minDistance = Infinity;
+        for (const color of palette) {
+          const distance = Math.sqrt(
+            Math.pow(r - color[0], 2) +
+            Math.pow(g - color[1], 2) +
+            Math.pow(b - color[2], 2)
+          );
+          if (distance < minDistance) {
+            minDistance = distance;
+            closestColor = color;
+          }
         }
-      };
-    }
+        return closestColor;
+      }
 
     function draw() {
       const bg = select('#bgColorPicker').elt.value;
@@ -87,20 +149,13 @@
       video.loadPixels();
       if (video.pixels.length === 0) return;
 
-      const charset = select('#charsetInput').elt.value;
-      const depth = int(select('#depthSlider').elt.value);
       const scalePct = select('#scaleSlider').elt.value / 100.0;
-      const contrast = select('#contrastSlider').elt.value / 100.0;
-      const brightness = select('#brightnessSlider').elt.value * 255/100;
-      const textCol = select('#textColorPicker').elt.value;
-
-      // Set font size based on scale factor
-      const baseFontSize = 12;  // Base font size in pixels
+      const baseFontSize = 12;
       const fontSize = baseFontSize * scalePct;
-      
+
       textFont('monospace', fontSize);
-      fill(textCol);
-      
+      noStroke();
+
       const charW = textWidth('A');
       const charH = textAscent() * 1.2;
       const cols = floor(width / charW);
@@ -115,19 +170,80 @@
           const y = j * hStep;
           const idx = 4 * (y * video.width + x);
           let r = video.pixels[idx];
-          let g = video.pixels[idx+1];
-          let b = video.pixels[idx+2];
+          let g = video.pixels[idx + 1];
+          let b = video.pixels[idx + 2];
+
+          // Map to limited color palette
+          const [mappedR, mappedG, mappedB] = mapToPalette(r, g, b);
+          fill(mappedR, mappedG, mappedB);
+
           let gray = (r + g + b) / 3;
-          // contrast & brightness
-          gray = constrain((gray-128)*contrast + 128 + brightness, 0, 255);
-          // map to ascii
-          const levs = charset.substring(0, depth);
-          const pos = floor(map(gray, 0, 255, levs.length-1, 0));
-          const c = levs.charAt(pos);
+          const pos = floor(map(gray, 0, 255, charset.length - 1, 0));
+          const c = charset.charAt(pos);
           text(c, i * charW, j * charH);
         }
       }
+
+      if (isRecording) {
+        capturer.capture(document.querySelector('canvas'));
+      }
     }
+
+    // Reset button
+    document.getElementById('resetButton').addEventListener('click', () => {
+      document.getElementById('charsetInput').value = 'oo|         .    ';
+      document.getElementById('depthSlider').value = 10;
+      document.getElementById('scaleSlider').value = 100;
+      document.getElementById('contrastSlider').value = 100;
+      document.getElementById('brightnessSlider').value = 0;
+      document.getElementById('textColorPicker').value = '#ffffff';
+      document.getElementById('bgColorPicker').value = '#000000';
+      background('#000000');
+    });
+
+    // Save settings
+    document.getElementById('saveSettingsButton').addEventListener('click', () => {
+      const settings = {
+        charset: document.getElementById('charsetInput').value,
+        depth: document.getElementById('depthSlider').value,
+        scale: document.getElementById('scaleSlider').value,
+        contrast: document.getElementById('contrastSlider').value,
+        brightness: document.getElementById('brightnessSlider').value,
+        textColor: document.getElementById('textColorPicker').value,
+        bgColor: document.getElementById('bgColorPicker').value
+      };
+
+      const blob = new Blob([JSON.stringify(settings, null, 2)], { type: 'application/json' });
+      const a = document.createElement('a');
+      a.href = URL.createObjectURL(blob);
+      a.download = 'settings.json';
+      a.click();
+    });
+
+    // Load settings
+    document.getElementById('loadSettingsButton').addEventListener('click', () => {
+      const input = document.createElement('input');
+      input.type = 'file';
+      input.accept = 'application/json';
+      input.onchange = (event) => {
+        const file = event.target.files[0];
+        if (file) {
+          const reader = new FileReader();
+          reader.onload = (e) => {
+            const settings = JSON.parse(e.target.result);
+            document.getElementById('charsetInput').value = settings.charset || '';
+            document.getElementById('depthSlider').value = settings.depth || 10;
+            document.getElementById('scaleSlider').value = settings.scale || 100;
+            document.getElementById('contrastSlider').value = settings.contrast || 100;
+            document.getElementById('brightnessSlider').value = settings.brightness || 0;
+            document.getElementById('textColorPicker').value = settings.textColor || '#ffffff';
+            document.getElementById('bgColorPicker').value = settings.bgColor || '#000000';
+          };
+          reader.readAsText(file);
+        }
+      };
+      input.click();
+    });
   </script>
 </body>
 </html>
